@@ -330,8 +330,8 @@ class ImageAnnotationDock(QtWidgets.QDockWidget):
             self.dataManager.mask = mask
             self.dataManager.cur_mask = mask[0,:]
             self.frame_sbox.setValue(0)
-            view_idx = self.singleDock.view_cbox.currentIndex()
-            self.showImageChange(view_idx, 0)
+            # view_idx = self.singleDock.view_cbox.currentIndex()
+            # self.showImageChange(view_idx, 0)
             return
         else:
             QMessageBox.warning(self, "warning", "An error occured in prediction" )

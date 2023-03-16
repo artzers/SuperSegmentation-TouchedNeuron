@@ -1,4 +1,6 @@
 import torch
+import os
+import tifffile
 import numpy as np
 from models import CommonUNet
 from vis import vis_tool
@@ -14,6 +16,8 @@ import Net
 python -m visdom.server
 http://localhost:8097/
 '''
+
+saveRoot = './out/test'
 
 class Segmentor:
     def __init__(self):
@@ -90,26 +94,119 @@ class Segmentor:
             torch.cuda.empty_cache()
 
         mask = np.zeros(origImg.shape, dtype=np.uint8)
-        zLen = origImg.shape[0]
-        for ind in range(zLen):
-            print('process %d'%ind)
-            img = origImg[ind, :]
-            resImg = np.zeros((origImg.shape[1], origImg.shape[2]), dtype=np.float)
-            lowImg = np.array(img, dtype=np.float32)
-            lowImg = (lowImg - self.meanVal) / (self.stdVal)
-            lowImg = np.expand_dims(lowImg, axis=0)
-            lowImg = np.expand_dims(lowImg, axis=0)
-            lowImg = torch.from_numpy(lowImg).float()
-            lowImg = lowImg.cuda(0)
-            pre2 = self.pretrained_net(lowImg)
-            saveImg = pre2.cpu().data.numpy()[0, :, :]
-            resImg = saveImg
-            resImg = (resImg - np.min(resImg)) / (np.max(resImg) - np.min(resImg)) * 254
-            mask[ind, :] = resImg.astype(np.uint8)
+        minLowRange = [0, 0, 0]
+        minLowRange = minLowRange[-1::-1]
+        xPad = 10
+        yPad = 10
+        zPad = 4
+        # xPad = 0
+        # yPad = 0
+        # zPad = 0
+        maxLowRange = [origImg.shape[2], origImg.shape[1], origImg.shape[0]]
+        # print(maxLowRange)
+        # maxLowRange=[120,120,32]
+        maxLowRange = maxLowRange[-1::-1]  # reverse
+        # print(maxLowRange)
+        yMinLowList = []
+        yMaxLowList = []
+        xMinLowList = []
+        xMaxLowList = []
+        zMinLowList = []
+        zMaxLowList = []
 
-        mask[mask > 125] = 255
-        mask[mask <= 125] = 0
-        return mask
+        for k in range(minLowRange[1], maxLowRange[1] - 119, 120 - 6 * yPad):
+            yMinLowList.append(k)
+            yMaxLowList.append(k + 120)  # 59
+
+        if yMaxLowList[-1] < maxLowRange[1]:
+            yMaxLowList.append(maxLowRange[1])
+            yMinLowList.append(maxLowRange[1] - 120)
+
+        for k in range(minLowRange[2], maxLowRange[2] - 119, 120 - 6 * xPad):
+            xMinLowList.append(k)
+            xMaxLowList.append(k + 120)
+
+        if xMaxLowList[-1] < maxLowRange[2]:
+            xMaxLowList.append(maxLowRange[2])
+            xMinLowList.append(maxLowRange[2] - 120)
+
+        for k in range(minLowRange[0], maxLowRange[0] - 31, 32 - 4 * zPad):
+            zMinLowList.append(k)
+            zMaxLowList.append(k + 32)
+
+        if zMaxLowList[-1] < maxLowRange[0]:
+            zMaxLowList.append(maxLowRange[0])
+            zMinLowList.append(maxLowRange[0] - 32)
+
+        zBase = zMinLowList[0]
+        resImg = np.zeros((origImg.shape[0] * 3, origImg.shape[1], origImg.shape[2]), dtype=np.float)
+        # padImg = np.zeros((img.shape[0] + 2*zPad,img.shape[1] + 2*yPad,img.shape[2] + 2*xPad ), dtype = img.dtype)
+        # padImg[zPad:zPad+img.shape[0], yPad:yPad+img.shape[1], xPad:xPad+img.shape[2]] = img
+        # tifffile.imwrite('./test/hehe.tif',padImg)
+        # resImg = np.zeros((padImg.shape[0]*3, padImg.shape[1],padImg.shape[2]), dtype=np.float)
+        for i in range(len(zMinLowList)):
+            for j in range(len(yMinLowList)):
+                for k in range(len(xMinLowList)):
+                    print('processing :%d-%d, %d-%d %d-%d' % (xMinLowList[k], xMaxLowList[k],
+                                                              yMinLowList[j], yMaxLowList[j],
+                                                              zMinLowList[i], zMaxLowList[i]))
+                    lowImg = origImg[zMinLowList[i]:zMaxLowList[i],
+                             yMinLowList[j]:yMaxLowList[j],
+                             xMinLowList[k]:xMaxLowList[k]]
+                    lowImg = np.array(lowImg, dtype=np.float32)
+                    lowImg = (lowImg - 30.) / (30.)
+                    lowImg = np.expand_dims(lowImg, axis=1)
+                    lowImg = np.expand_dims(lowImg, axis=0)
+                    lowImg = torch.from_numpy(lowImg).float()
+                    lowImg = lowImg.cuda(0)
+                    pre2 = self.pretrained_net(lowImg)
+                    saveImg = pre2.cpu().data.numpy()[0, :, :, :]
+                    if ((k == 0 and j == 1 and i == 0) or (k == 2 and j == 1 and i == 0)
+                            or (k == 0 and j == 1 and i == 1) or (k == 2 and j == 1 and i == 1)
+                            or (k == 0 and j == 1 and i == 2) or (k == 2 and j == 1 and i == 2)):
+                        resImg[zMinLowList[i] * 3:zMaxLowList[i] * 3,
+                        yMinLowList[j] + yPad:yMaxLowList[j] - yPad,
+                        xMinLowList[k]:xMaxLowList[k]] \
+                            = saveImg[0:96, yPad:120 - yPad, 0:120]
+                    elif ((k == 1 and j == 0 and i == 0) or (k == 1 and j == 2 and i == 0)
+                          or (k == 1 and j == 0 and i == 1) or (k == 1 and j == 2 and i == 1)
+                          or (k == 1 and j == 0 and i == 2) or (k == 1 and j == 2 and i == 2)):
+                        resImg[zMinLowList[i] * 3:zMaxLowList[i] * 3,
+                        yMinLowList[j]:yMaxLowList[j],
+                        xMinLowList[k] + xPad:xMaxLowList[k] - xPad] \
+                            = saveImg[0:96, 0:120, xPad:120 - xPad]
+                    elif ((k == 1 and j == 1 and i == 0) or (k == 1 and j == 1 and i == 2)):
+                        resImg[zMinLowList[i] * 3:zMaxLowList[i] * 3,
+                        yMinLowList[j] + yPad:yMaxLowList[j] - yPad,
+                        xMinLowList[k] + xPad:xMaxLowList[k] - xPad] \
+                            = saveImg[0:96, yPad:120 - yPad, xPad:120 - xPad]
+                    elif (k == 1 and j == 1 and i == 1):
+                        resImg[zMinLowList[i] * 3 + 2 * zPad:zMaxLowList[i] * 3 - 2 * zPad,
+                        yMinLowList[j] + yPad:yMaxLowList[j] - yPad,
+                        xMinLowList[k] + xPad:xMaxLowList[k] - xPad] \
+                            = saveImg[2 * zPad:96 - 2 * zPad, yPad:120 - yPad, xPad:120 - xPad]
+                    else:
+                        resImg[zMinLowList[i] * 3:zMaxLowList[i] * 3,
+                        yMinLowList[j]:yMaxLowList[j],
+                        xMinLowList[k]:xMaxLowList[k]] \
+                            = saveImg[0:96, 0:120, 0:120]
+                    # resImg[zMinLowList[i]*3+3*zPad:zMaxLowList[i]*3-3*zPad,
+                    # yMinLowList[j]+yPad:yMaxLowList[j]-yPad,
+                    # xMinLowList[k]+xPad:xMaxLowList[k]-xPad] \
+                    # = saveImg[3*zPad:96-3*zPad, yPad:120-yPad, xPad:120-xPad]
+                    # resImg[zMinLowList[i]*3:zMaxLowList[i]*3,
+                    #                           yMinLowList[j]:yMaxLowList[j],
+                    #                           xMinLowList[k]:xMaxLowList[k]]\
+                    #     = np.maximum(saveImg, resImg[zMinLowList[i]*3:zMaxLowList[i]*3,
+                    #                           yMinLowList[j]:yMaxLowList[j],
+                    #                           xMinLowList[k]:xMaxLowList[k]])
+
+        # resImg = resImg[3*zPad:3*zPad+img.shape[0]*3, yPad:yPad+img.shape[1], xPad:xPad+img.shape[2]]
+        resImg = (resImg - np.min(resImg)) / (np.max(resImg) - np.min(resImg)) * 254
+        savePath = os.path.join(saveRoot, "orig" + '_clstm.tif')
+        print('save as %s' % savePath)
+        tifffile.imwrite(savePath, np.uint8(resImg))  # , compress = 6
+        return resImg
 
     def Train(self, lrDir, hrDir, mean=35., std=35., epoch=500, visdomable=False,
               initLR = 0.002, decayTurn = 2000, savePath = None):
