@@ -2,14 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-# Batch x NumChannels x Height x Width
-# UNET --> BatchSize x 1 (3?) x 240 x 240
-# BDCLSTM --> BatchSize x 64 x 240 x240
 
-''' Class CLSTMCell.
-    This represents a single node in a CLSTM series.
-    It produces just one time (spatial) step output.
-'''
 
 
 class CLSTMCell(nn.Module):
@@ -202,12 +195,12 @@ class MyCLSTM(nn.Module):
         return input #outputs
 
 
-class BDCLSTM(nn.Module):
+class SRCLSN(nn.Module):
     # Constructor
     def __init__(self, input_channels=64, hidden_channels=[64],
                  kernel_size=3, bias=True):
 
-        super(BDCLSTM, self).__init__()
+        super(SRCLSN, self).__init__()
         self.forward_net = MyCLSTM(
             input_channels, hidden_channels, kernel_size, bias)
         # self.reverse_net = MyCLSTM(

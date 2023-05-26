@@ -11,7 +11,7 @@ from scipy.ndimage.interpolation import zoom
 import itertools
 from torch.autograd import Variable
 import torch.autograd as autograd
-from models import CommonUNet
+from models import CommonSRCLSN
 from losses import DICELoss
 from Util import RestoreNetImg, SoftDiceLoss
 
@@ -42,7 +42,7 @@ class Trainer:
         self.lambda_gp = 10
 
         # Initialize generator and discriminator
-        self.G_AB = CommonUNet()
+        self.G_AB = CommonSRCLSN()
 
         self.G_AB.cuda(self.cudaid)
 

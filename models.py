@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import torch.nn as nn
 import torch
-from CLSTM import BDCLSTM, MyCLSTM
+from CLSTM import SRCLSN, MyCLSTM
 
 
 class UNetSmall(nn.Module):
@@ -183,13 +183,13 @@ class UpSample(nn.Module):
         out = self.conv(outputs)
         return out
 
-class CommonUNet(nn.Module):
+class CommonSRCLSN(nn.Module):
     def __init__(self):
-        super(CommonUNet, self).__init__()
+        super(CommonSRCLSN, self).__init__()
         # wn = lambda x: torch.nn.utils.weight_norm(x)
         self.unet = UNetSmall()
         # self.conv = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3)
-        self.lstm = BDCLSTM(input_channels=32, hidden_channels=[64,64])#[32,32]
+        self.srclsn = SRCLSN(input_channels=32, hidden_channels=[64,64])#[32,32]
         self.conv = nn.Sequential(
             (nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)),
             # nn.BatchNorm2d(32),
@@ -225,12 +225,12 @@ class CommonUNet(nn.Module):
         for k in range(input.shape[1]):
             x = self.unet(input[:, k, :], return_features=True)
             if k == 0:
-                self.lstm.init_hidden(x)
-            _ = self.lstm(x)
+                self.srclsn.init_hidden(x)
+            _ = self.srclsn(x)
 
         for k in range(input.shape[1]):
             x = self.unet(input[:,k,:], return_features=True) #:,15,1,:,: -> 1,1,64,:,:
-            output = self.lstm(x)
+            output = self.srclsn(x)
             res.append(self.conv(output))
         # output = self.lstm(input)
         output = torch.cat(res, dim=1)

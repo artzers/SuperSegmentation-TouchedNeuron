@@ -2,7 +2,7 @@ import torch
 import os
 import tifffile
 import numpy as np
-from models import CommonUNet
+from models import CommonSRCLSN
 from vis import vis_tool
 from torch.utils.data import DataLoader
 from torch.optim import lr_scheduler as lrs
@@ -41,7 +41,7 @@ class Segmentor:
             self.netPath = netPath
         if self.pretrained_net is not None:
             self.pretrained_net = None
-        self.pretrained_net = CommonUNet()
+        self.pretrained_net = CommonSRCLSN()
         self.pretrained_net.load_state_dict(
             torch.load(self.netPath, map_location=self.deviceStr))
         if self.deviceType == 1:
