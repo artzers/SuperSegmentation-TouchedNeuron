@@ -54,7 +54,7 @@ class Trainer:
         #                                       'initial_lr': 0.00001}], lr=0.00001, momentum=0.9)
 
 
-        self.scheduler_G = scheduler(self.optimizer_G, step_size=8000, gamma=0.9, last_epoch=-1)
+        self.scheduler_G = scheduler(self.optimizer_G, step_size=10000, gamma=0.9, last_epoch=-1)
         #self.scheduler_G_AB = scheduler(self.optimizer_G_AB, step_size=10000, gamma=0.9999, last_epoch=-1)#36000
 
 
