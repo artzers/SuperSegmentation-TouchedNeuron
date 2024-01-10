@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import torch.nn as nn
 import torch
-from CLSTM import SRCLSN, MyCLSTM
+from CLSTM import BDCLSTM, MyCLSTM
 
 
 class UNetSmall(nn.Module):
@@ -183,13 +183,67 @@ class UpSample(nn.Module):
         out = self.conv(outputs)
         return out
 
-class CommonSRCLSN(nn.Module):
+# class CommonSRCLSN(nn.Module):
+#     def __init__(self):
+#         super(CommonSRCLSN, self).__init__()
+#         # wn = lambda x: torch.nn.utils.weight_norm(x)
+#         self.unet = UNetSmall()
+#         # self.conv = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3)
+#         self.srclsn = SRCLSN(input_channels=32, hidden_channels=[64,64])#[32,32]
+#         self.conv = nn.Sequential(
+#             (nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)),
+#             # nn.BatchNorm2d(32),
+#             nn.InstanceNorm2d(32, affine= True),
+#             nn.ReLU(),
+#             nn.Conv2d(in_channels=32, out_channels=3, kernel_size=3, padding=1))
+#         #self.outputSize = 30
+#         #self.up = UpSample(32, self.outputSize)
+#         #self.tail = nn.Conv2d(in_channels=16*32, out_channels=48, kernel_size=3, padding=1)
+#         self._init_weight()
+#
+#     def _init_weight(self):
+#         for m in self.modules():
+#             if isinstance(m, nn.Conv3d):
+#                 nn.init.kaiming_normal_(m.weight)
+#             elif isinstance(m, nn.Linear):
+#                 m.weight.data.normal(0, 0.01)
+#                 m.bias.data.zero_()
+#             elif isinstance(m, nn.BatchNorm3d):
+#                 torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+#                 torch.nn.init.constant_(m.bias.data, 0.0)
+#             elif isinstance(m, nn.InstanceNorm2d):
+#                 nn.init.constant_(m.bias, 0.0)
+#                 nn.init.normal_(m.weight, 1.0, 0.02)
+#             elif isinstance(m, nn.GroupNorm):
+#                 torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+#                 torch.nn.init.constant_(m.bias.data, 0.0)
+#
+#     def forward(self, input):
+#         #input batch x
+#         #input = input.unsqueeze(0)
+#         res = []
+#         for k in range(input.shape[1]):
+#             x = self.unet(input[:, k, :], return_features=True)
+#             if k == 0:
+#                 self.srclsn.init_hidden(x)
+#             _ = self.srclsn(x)
+#
+#         for k in range(input.shape[1]):
+#             x = self.unet(input[:,k,:], return_features=True) #:,15,1,:,: -> 1,1,64,:,:
+#             output = self.srclsn(x)
+#             res.append(self.conv(output))
+#         # output = self.lstm(input)
+#         output = torch.cat(res, dim=1)
+#         # output = self.tail(res)
+#         return torch.sigmoid(output)
+
+class BDCLSTMSegNet(nn.Module):
     def __init__(self):
-        super(CommonSRCLSN, self).__init__()
+        super(BDCLSTMSegNet, self).__init__()
         # wn = lambda x: torch.nn.utils.weight_norm(x)
         self.unet = UNetSmall()
         # self.conv = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3)
-        self.srclsn = SRCLSN(input_channels=32, hidden_channels=[64,64])#[32,32]
+        self.lstm = BDCLSTM(input_channels=32, hidden_channels=[64,64])#[32,32]
         self.conv = nn.Sequential(
             (nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)),
             # nn.BatchNorm2d(32),
@@ -203,7 +257,7 @@ class CommonSRCLSN(nn.Module):
 
     def _init_weight(self):
         for m in self.modules():
-            if isinstance(m, nn.Conv3d):
+            if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight)
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal(0, 0.01)
@@ -220,21 +274,18 @@ class CommonSRCLSN(nn.Module):
 
     def forward(self, input):
         #input batch x
-        #input = input.unsqueeze(0)
         res = []
         for k in range(input.shape[1]):
             x = self.unet(input[:, k, :], return_features=True)
             if k == 0:
-                self.srclsn.init_hidden(x)
-            _ = self.srclsn(x)
+                self.lstm.init_hidden(x)
+            _ = self.lstm(x)
 
         for k in range(input.shape[1]):
             x = self.unet(input[:,k,:], return_features=True) #:,15,1,:,: -> 1,1,64,:,:
-            output = self.srclsn(x)
+            output = self.lstm(x)
             res.append(self.conv(output))
         # output = self.lstm(input)
         output = torch.cat(res, dim=1)
         # output = self.tail(res)
         return torch.sigmoid(output)
-
-

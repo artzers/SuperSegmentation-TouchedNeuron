@@ -195,12 +195,12 @@ class MyCLSTM(nn.Module):
         return input #outputs
 
 
-class SRCLSN(nn.Module):
+class BDCLSTM(nn.Module):
     # Constructor
     def __init__(self, input_channels=64, hidden_channels=[64],
                  kernel_size=3, bias=True):
 
-        super(SRCLSN, self).__init__()
+        super(BDCLSTM, self).__init__()
         self.forward_net = MyCLSTM(
             input_channels, hidden_channels, kernel_size, bias)
         # self.reverse_net = MyCLSTM(

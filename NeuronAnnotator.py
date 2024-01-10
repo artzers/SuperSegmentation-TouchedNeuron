@@ -20,7 +20,7 @@ class NeuronAnnotator(QMainWindow):
         self.resize(1024,768)
         self.dataManager = GDataManager()
         _translate = QtCore.QCoreApplication.translate
-        self.setWindowTitle(_translate('NeuronAnnotator','半监督三维神经细胞标注'))
+        self.setWindowTitle(_translate('NeuronAnnotator','CellSuperSegmentor'))
         self.setWindowIcon(QIcon('./title.png'))
         self.CreateLeftDock()
         self.SetupUI()

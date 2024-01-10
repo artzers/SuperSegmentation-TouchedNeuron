@@ -2,7 +2,7 @@ import torch
 import os
 import tifffile
 import numpy as np
-from models import CommonSRCLSN
+from models import BDCLSTMSegNet
 from vis import vis_tool
 from torch.utils.data import DataLoader
 from torch.optim import lr_scheduler as lrs
@@ -41,7 +41,7 @@ class Segmentor:
             self.netPath = netPath
         if self.pretrained_net is not None:
             self.pretrained_net = None
-        self.pretrained_net = CommonSRCLSN()
+        self.pretrained_net = BDCLSTMSegNet()
         self.pretrained_net.load_state_dict(
             torch.load(self.netPath, map_location=self.deviceStr))
         if self.deviceType == 1:
@@ -139,7 +139,7 @@ class Segmentor:
             zMinLowList.append(maxLowRange[0] - 32)
 
         zBase = zMinLowList[0]
-        resImg = np.zeros((origImg.shape[0] * 3, origImg.shape[1], origImg.shape[2]), dtype=np.float)
+        resImg = np.zeros((origImg.shape[0] * 3, origImg.shape[1], origImg.shape[2]), dtype=float)
         # padImg = np.zeros((img.shape[0] + 2*zPad,img.shape[1] + 2*yPad,img.shape[2] + 2*xPad ), dtype = img.dtype)
         # padImg[zPad:zPad+img.shape[0], yPad:yPad+img.shape[1], xPad:xPad+img.shape[2]] = img
         # tifffile.imwrite('./test/hehe.tif',padImg)
@@ -158,7 +158,10 @@ class Segmentor:
                     lowImg = np.expand_dims(lowImg, axis=1)
                     lowImg = np.expand_dims(lowImg, axis=0)
                     lowImg = torch.from_numpy(lowImg).float()
-                    lowImg = lowImg.cuda(0)
+                    if self.deviceType == 0:
+                        lowImg = lowImg.cpu()
+                    else:
+                        lowImg = lowImg.cuda(0)
                     pre2 = self.pretrained_net(lowImg)
                     saveImg = pre2.cpu().data.numpy()[0, :, :, :]
                     if ((k == 0 and j == 1 and i == 0) or (k == 2 and j == 1 and i == 0)
